@@ -191,7 +191,12 @@ char * *argv;
                 MPI_Recv(tmp,m*m,MPI_FLOAT,src,my_rank,MPI_COMM_WORLD,&status);
                 dst = (my_rank + p - t)%p;
                 MPI_Send(b,m*m,MPI_FLOAT,dst,dst,MPI_COMM_WORLD);
-                memcpy(b, tmp, sizeof(b));
+                //memcpy(b, tmp, sizeof(b));
+                for (j = 0; j < m; j++) {
+                    for (k = 0; k < m; k++) {
+                        b(j,k)=tmp(j,k);
+                    }
+                }
             }
         }
     }
