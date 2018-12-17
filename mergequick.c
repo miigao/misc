@@ -175,7 +175,40 @@ char * *argv;
         time2=MPI_Wtime();
     }
     /* 记录单节点快排时间开销用于对比 */
-
+    if (my_rank==0) {
+        time3=MPI_Wtime();
+        top=-1;
+        my_stack[++top].x = 0; my_stack[top].y = size;
+        while (top >= 0) {
+            u = my_stack[top].x; v=my_stack[top].y;
+            top--;
+            i = u; j = v-1; k = a[u]; turn = 1;
+            while (i < j) {
+                if (turn%2) {
+                    while (i < j && a[j] >= k) j--;
+                    if (i < j) {
+                        a[i] = a[j];
+                        turn = 0;
+                    }
+                }
+                else {
+                    while (i < j && a[i] <= k) i++;
+                    if (i < j) {
+                        a[j] = a[i];
+                        turn = 1;
+                    }
+                }
+            }
+            a[i] = k;
+            if (i < v-2) {
+                my_stack[++top].x = i+1; my_stack[top].y = v;
+            }
+            if (i > u+1) {
+                my_stack[++top].x = u; my_stack[top].y = i;
+            }
+        }
+        time4=MPI_Wtime();
+    }
     /* 由主进程打印计算结果 */
     if (my_rank==0) {
         printf("Input of file \"sortDataIn.txt\"\n");
@@ -189,7 +222,8 @@ char * *argv;
             printf("%d ",B[i]);
         }
         printf("\n");
-        printf("time: %f seconds\n", time2-time1);
+        printf("Merge_quick time: %f seconds\n", time2-time1);
+        printf("Pure_quick time: %f seconds\n", time4-time3);
     }
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
