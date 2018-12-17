@@ -19,6 +19,7 @@ int size;
 int *A, *B, *C;
 MPI_Status status;
 FILE *fdA;
+double time1, time2, time3, time4;
 /* 运行结束前,调用本函数释放内存空间 */
 void Environment_Finalize(int *a,int *b, node *c)
 {
@@ -37,18 +38,19 @@ char * *argv;
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
-    
+
     /* 如果是主进程(rank=0的进程),则进行读文件的操作,
     将数组读入内存
     */
     if(my_rank==0) {
+        time1=MPI_Wtime();
         fdA=fopen("sortDataIn.txt","r");
         /* 读入数组的长度,并保存到size中 */
         fscanf(fdA,"%d", &size);
 
-        A=(int*)malloc(intsize*size);
-        B=(int*)malloc(intsize*size);
-        C=(int*)malloc(intsize*size);
+        A=(int*)malloc(intsize*size+20);
+        B=(int*)malloc(intsize*size+20);
+        C=(int*)malloc(intsize*size+20);
         
         /* 将数组的所有值读入,保存到A中 */
         for(i = 0; i < size; i ++) {
@@ -67,9 +69,9 @@ char * *argv;
     /* 每个子段的长度 */
     m=size/t;
     /* a保存A中对应的子段,tmp用于暂存数据,my_stack用于快排 */
-    a=(int *)malloc(intsize*m+4);
-    tmp=(int *)malloc(intsize*m+4);
-    my_stack=(node *)malloc(nodesize*m+4);
+    a=(int *)malloc(intsize*(m+4));
+    tmp=(int *)malloc(intsize*(m+4));
+    my_stack=(node *)malloc(nodesize*(m+4));
     
     /* 对主进程,获得自己的子段 */
     if (my_rank==0) {
@@ -137,7 +139,7 @@ char * *argv;
             B[i]=a[i];
     }
     /* 由主进程进行归并排序 */
-    if (my_rank == 0) {
+    if (my_rank==0) {
         top = -1;
         my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = size;
         my_stack[++top].x = 0; my_stack[top].y = 2*(size/t)+size%t;
@@ -170,7 +172,10 @@ char * *argv;
             }
             
         }
+        time2=MPI_Wtime();
     }
+    /* 记录单节点快排时间开销用于对比 */
+
     /* 由主进程打印计算结果 */
     if (my_rank==0) {
         printf("Input of file \"sortDataIn.txt\"\n");
@@ -184,6 +189,7 @@ char * *argv;
             printf("%d ",B[i]);
         }
         printf("\n");
+        printf("time: %f seconds\n", time2-time1);
     }
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
