@@ -48,9 +48,9 @@ char * *argv;
         /* 读入数组的长度,并保存到size中 */
         fscanf(fdA,"%d", &size);
 
-        A=(int*)malloc(intsize*size+20);
-        B=(int*)malloc(intsize*size+20);
-        C=(int*)malloc(intsize*size+20);
+        A=(int*)malloc(intsize*(size+20));
+        B=(int*)malloc(intsize*(size+20));
+        C=(int*)malloc(intsize*(size+20));
         
         /* 将数组的所有值读入,保存到A中 */
         for(i = 0; i < size; i ++) {
@@ -211,7 +211,7 @@ char * *argv;
     }
     /* 由主进程打印计算结果 */
     if (my_rank==0) {
-        printf("Input of file \"sortDataIn.txt\"\n");
+        /*printf("Input of file \"sortDataIn.txt\"\n");
         printf("size:%d\n", size);
         for(i=0;i<size;i++) {
             printf("%d ",A[i]);
@@ -221,9 +221,9 @@ char * *argv;
         for(i=0;i<size;i++) {
             printf("%d ",B[i]);
         }
-        printf("\n");
+        printf("\n");*/
         printf("Merge_quick time: %f seconds\n", time2-time1);
-        printf("Pure_quick time: %f seconds\n", time4-time3);
+        printf(" Pure_quick time: %f seconds\n", time4-time3);
     }
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
