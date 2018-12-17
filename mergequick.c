@@ -16,9 +16,16 @@ int my_rank;
 int t;
 int m;
 int size;
-int *A, *B;
+int *A, *B, *C;
 MPI_Status status;
 FILE *fdA;
+/* 运行结束前,调用本函数释放内存空间 */
+void Environment_Finalize(int *a,int *b, int *c)
+{
+    free(a);
+    free(b);
+    free(c);
+}
 
 int main(argc, argv)
 int argc;
@@ -26,7 +33,7 @@ char * *argv;
 {
     int *a, *tmp;
     node *my_stack;
-    int i, j, k, u, v, top = -1, turn;
+    int i, j, k, u, v, top = -1, turn, uu, vv;
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
@@ -41,6 +48,7 @@ char * *argv;
 
         A=(int*)malloc(intsize*size);
         B=(int*)malloc(intsize*size);
+        C=(int*)malloc(intsize*size);
         
         /* 将数组的所有值读入,保存到A中 */
         for(i = 0; i < size; i ++) {
@@ -128,6 +136,39 @@ char * *argv;
         for(i=0;i<m;i++)
             B[i]=a[i];
     }
+    /* 由主进程进行归并排序 */
+    top = -1;
+    my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = size;
+    my_stack[++top].x = 0; my_stack[top].y = 2*(size/t)+size%t;
+    my_stack[++top].x = 3*(size/t)+size%t; my_stack[top].y = size;
+    my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = 3*(size/t)+size%t;
+    my_stack[++top].x = 1*(size/t)+size%t; my_stack[top].y = 2*(size/t)+size%t;
+    my_stack[++top].x = 0; my_stack[top].y = 1*(size/t)+size%t;
+    while (top >= 0) {
+        u = my_stack[top].x; v=my_stack[top].y;
+        top--;
+        uu = my_stack[top].x; vv=my_stack[top].y;
+        top--;
+        for (i = u; i < v; i++)
+            C[i] = B[i];
+        i = u; j = uu; k = u;
+        while (i < v && j < vv) {
+            if (C[i] <= B[j]) {
+                B[k] = C[i];
+                i++;
+            }
+            else {
+                B[k] = B[j];
+                j++;
+            }
+            k++;
+        }
+        while (i < v) {
+            B[k] = C[i];
+            i++; k++;
+        }
+        
+    }
     /* 由主进程打印计算结果 */
     if (my_rank==0) {
         printf("Input of file \"sortDataIn.txt\"\n");
@@ -144,6 +185,6 @@ char * *argv;
     }
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
-    //Environment_Finalize(a,tmp,my_stack);
+    Environment_Finalize(a,tmp,my_stack);
     return (0);
 }
