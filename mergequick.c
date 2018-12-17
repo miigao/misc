@@ -20,7 +20,7 @@ int *A, *B, *C;
 MPI_Status status;
 FILE *fdA;
 /* 运行结束前,调用本函数释放内存空间 */
-void Environment_Finalize(int *a,int *b, int *c)
+void Environment_Finalize(int *a,int *b, node *c)
 {
     free(a);
     free(b);
@@ -137,37 +137,39 @@ char * *argv;
             B[i]=a[i];
     }
     /* 由主进程进行归并排序 */
-    top = -1;
-    my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = size;
-    my_stack[++top].x = 0; my_stack[top].y = 2*(size/t)+size%t;
-    my_stack[++top].x = 3*(size/t)+size%t; my_stack[top].y = size;
-    my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = 3*(size/t)+size%t;
-    my_stack[++top].x = 1*(size/t)+size%t; my_stack[top].y = 2*(size/t)+size%t;
-    my_stack[++top].x = 0; my_stack[top].y = 1*(size/t)+size%t;
-    while (top >= 0) {
-        u = my_stack[top].x; v=my_stack[top].y;
-        top--;
-        uu = my_stack[top].x; vv=my_stack[top].y;
-        top--;
-        for (i = u; i < v; i++)
-            C[i] = B[i];
-        i = u; j = uu; k = u;
-        while (i < v && j < vv) {
-            if (C[i] <= B[j]) {
+    if (my_rank == 0) {
+        top = -1;
+        my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = size;
+        my_stack[++top].x = 0; my_stack[top].y = 2*(size/t)+size%t;
+        my_stack[++top].x = 3*(size/t)+size%t; my_stack[top].y = size;
+        my_stack[++top].x = 2*(size/t)+size%t; my_stack[top].y = 3*(size/t)+size%t;
+        my_stack[++top].x = 1*(size/t)+size%t; my_stack[top].y = 2*(size/t)+size%t;
+        my_stack[++top].x = 0; my_stack[top].y = 1*(size/t)+size%t;
+        while (top >= 0) {
+            u = my_stack[top].x; v=my_stack[top].y;
+            top--;
+            uu = my_stack[top].x; vv=my_stack[top].y;
+            top--;
+            for (i = u; i < v; i++)
+                C[i] = B[i];
+            i = u; j = uu; k = u;
+            while (i < v && j < vv) {
+                if (C[i] <= B[j]) {
+                    B[k] = C[i];
+                    i++;
+                }
+                else {
+                    B[k] = B[j];
+                    j++;
+                }
+                k++;
+            }
+            while (i < v) {
                 B[k] = C[i];
-                i++;
+                i++; k++;
             }
-            else {
-                B[k] = B[j];
-                j++;
-            }
-            k++;
+            
         }
-        while (i < v) {
-            B[k] = C[i];
-            i++; k++;
-        }
-        
     }
     /* 由主进程打印计算结果 */
     if (my_rank==0) {
