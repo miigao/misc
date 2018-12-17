@@ -70,7 +70,7 @@ char * *argv;
         for (i=0;i<(size)%t;i++) {
             a[i+m]=A[i+m];
         }
-        m = i;
+        m = i+m;
     }
 	/* 主进程向其他进程发送数据 */
     if (my_rank==0) {
@@ -120,7 +120,7 @@ char * *argv;
     }
     else if (my_rank==0) {                           /* 对主进程,从其它进程接收数据 */
         for(i=1;i<p;i++) {
-            MPI_Recv(tmp,m,MPI_INT,i,my_rank,MPI_COMM_WORLD,&status);
+            MPI_Recv(tmp,size/t,MPI_INT,i,my_rank,MPI_COMM_WORLD,&status);
             
             for(j=i*(size/t);j<(i+1)*(size/t);j++)
                 B[j+(size%t)]=tmp[j%(size/t)];        /* 将结果存储到B中 */
@@ -133,17 +133,17 @@ char * *argv;
         printf("Input of file \"sortDataIn.txt\"\n");
         printf("size:%d\n", size);
         for(i=0;i<size;i++) {
-            printf("%d\t",A[i]);
+            printf("%d ",A[i]);
         }
         printf("\n");
         printf("\nOutput after sort\n");
         for(i=0;i<size;i++) {
-            printf("%d\t",B[i]);
+            printf("%d ",B[i]);
         }
         printf("\n");
     }
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
-    //Environment_Finalize(a,b,c,tmp);
+    //Environment_Finalize(a,tmp,my_stack);
     return (0);
 }
