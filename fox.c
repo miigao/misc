@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "mpi.h"
+#include "omp.h"
 #include "math.h"
 #include "memory.h"
 
@@ -23,6 +24,7 @@ int dst;
 int size;
 int N;
 MPI_Status status;
+double time1, time2;
 FILE *fdAB;
 
 /* 运行结束前,调用本函数释放内存空间 */
@@ -39,16 +41,17 @@ int argc;
 char * *argv;
 {
     float *a, *b, *c, *tmp;
-    int i, j, k, u, v;
+    int i, j, k, u, v, n_threads, tid;
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
-	
+
     /* 如果是主进程(rank=0的进程),则进行读文件的操作,
     将矩阵读入内存
     */
     if(my_rank==0)
     {
+        time1=MPI_Wtime();
         fdAB=fopen("foxDataIn.txt","r");
         /* 读入矩阵的行数和列数,并保存到size和N中 */
         fscanf(fdAB,"%d %d", &size, &N);
@@ -149,7 +152,7 @@ char * *argv;
     else if (my_rank<p) {                           /* 对其他进程,从主进程接收数据 */
         MPI_Recv(b,m*m,MPI_FLOAT,0,my_rank,MPI_COMM_WORLD,&status);
     }
-    
+ 
     for (i = 0; i < t; i++) {					/* 进行t轮操作 */
         if (my_rank%t == (my_rank/t + i)%t && my_rank<p) { /* 该轮需要发送 */
             for (j = 0; j < t; j++) {
@@ -168,9 +171,12 @@ char * *argv;
             src = (my_rank/t)*t + (my_rank/t + i)%t;
             MPI_Recv(tmp,m*m,MPI_FLOAT,src,my_rank,MPI_COMM_WORLD,&status);
         }
-        
+    #pragma omp parallel shared (c, tmp, b) private (tid, j, k, u, n_threads)
+    {
+        n_threads=omp_get_num_threads();
+        tid=omp_get_thread_num();
         if (my_rank<p) {
-            for (j = 0; j < m; j++) {
+            for (j = 0+tid; j < m; j+=n_threads) {
                 for (k = 0; k < m; k++) {
                     for (u = 0; u < m; u++) {
                         c(j,k) += (tmp(j,u))*(b(u,k));
@@ -178,6 +184,8 @@ char * *argv;
                 }
             }
         }
+
+    }
         /* 轮转B矩阵,奇数行先发后收,偶数行先收后发 */
         if (my_rank<p && i < t-1) {
             if ((my_rank/t)%2) {
@@ -219,10 +227,11 @@ char * *argv;
             for(j=0;j<m;j++) {
                 C(i,j)=c(i,j);
             }
+        time2=MPI_Wtime();
     }
     
     /* 由主进程打印计算结果 */
-    if (my_rank==0) {
+    if (my_rank==-1) {
         printf("Input of file \"foxDataIn.txt\"\n");
         printf("%d\t%d\n", size, size);
         for(i=0;i<size;i++) {
@@ -240,7 +249,11 @@ char * *argv;
             printf("\n");
         }
     }
-	
+    /* 时间信息 */
+    if (my_rank==0) {
+        printf("time: %f seconds\n", time2-time1);
+    }
+
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     Environment_Finalize(a,b,c,tmp);
