@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "mpi.h"
+#include "omp.h"
 #include "math.h"
 
 #define E 0.0001
@@ -33,7 +34,7 @@ void Environment_Finalize(float *a,float *b)
 
 int main(int argc, char **argv)
 {
-    int i,j,k,my_rank,group_size;
+    int i,j,k,my_rank,group_size,tid,n_threads;
     float *a,*b;
     int u,v;
     float temp;
@@ -151,14 +152,18 @@ int main(int argc, char **argv)
     }
 
     /* 对每一个子方阵进行转置 */
-    for(i=1;i<m;i++)
+    n_threads=omp_get_num_threads();
+#pragma omp parallel private (temp, tid)
+{
+    tid = omp_get_thread_num();
+    for(i=1+tid;i<m;i+=n_threads)
         for(j=0;j<i;j++)
     {
         temp=a(i,j);
         a(i,j)=a(j,i);
         a(j,i)=temp;
     }
-
+}
     /* 主进程开始将转置的结果进行组合
        先将主进程的结果组合到B中左上角
     */
@@ -188,7 +193,7 @@ int main(int argc, char **argv)
         MPI_Send(a,m*m,MPI_FLOAT,0,my_rank,MPI_COMM_WORLD);
 
     /* 由主进程打印计算结果 */
-    if (my_rank==0)
+    if (my_rank==-1)
     {
         printf("Input of file \"dataIn.txt\"\n");
         printf("%d\t%d\n", size, size);
